@@ -9,9 +9,19 @@ type Props = {
   locations: AppLocation[];
   selected: string | null;
   paramKey?: string;
+  /**
+   * Tampilkan opsi "Semua Lokasi" (value="all"). Disarankan hanya saat user
+   * berhak melihat lintas lokasi (Super Admin / Kepala Gudang).
+   */
+  includeAll?: boolean;
 };
 
-export function LocationPicker({ locations, selected, paramKey = "loc" }: Props) {
+export function LocationPicker({
+  locations,
+  selected,
+  paramKey = "loc",
+  includeAll = false,
+}: Props) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -32,6 +42,7 @@ export function LocationPicker({ locations, selected, paramKey = "loc" }: Props)
         onChange={(e) => onChange(e.target.value)}
       >
         {locations.length === 0 && <option value="">Tidak ada lokasi</option>}
+        {includeAll && <option value="all">Semua Lokasi</option>}
         {locations.map((l) => (
           <option key={l.id} value={l.id}>
             {l.name} · {locationTypeLabel[l.type]}
