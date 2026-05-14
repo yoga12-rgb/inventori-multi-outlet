@@ -6,7 +6,7 @@
 //     dan offline-first kasir sudah ditangani via IndexedDB queue).
 //
 // Versi cache di-bump setiap kali isi SW berubah supaya client lama dibersihkan.
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `inv-static-${VERSION}`;
 const PAGE_CACHE = `inv-pages-${VERSION}`;
 

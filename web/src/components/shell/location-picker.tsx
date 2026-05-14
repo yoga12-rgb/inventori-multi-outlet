@@ -42,7 +42,14 @@ export function LocationPicker({
         onChange={(e) => onChange(e.target.value)}
       >
         {locations.length === 0 && <option value="">Tidak ada lokasi</option>}
-        {includeAll && <option value="all">Semua Lokasi</option>}
+        {/* Tampilkan opsi "Semua Lokasi" kalau caller mengaktifkannya, ATAU
+            kalau URL saat ini menunjuk ke "all" — supaya controlled <select>
+            selalu menemukan option yang cocok dan tidak menimbulkan
+            hydration mismatch saat user/role/permission berubah di antara
+            request. */}
+        {(includeAll || selected === "all") && (
+          <option value="all">Semua Lokasi</option>
+        )}
         {locations.map((l) => (
           <option key={l.id} value={l.id}>
             {l.name} · {locationTypeLabel[l.type]}
