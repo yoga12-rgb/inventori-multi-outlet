@@ -33,7 +33,7 @@ export function OfflineFlusher() {
         for (const it of items) {
           const { error, data } = await supabase.rpc("transaction_create", {
             p_location_id: it.payload.p_location_id,
-            p_type: it.payload.p_type,
+            p_category_id: it.payload.p_category_id,
             p_items: it.payload.p_items,
             p_notes: it.payload.p_notes ?? null,
             p_client_uuid: it.client_uuid,

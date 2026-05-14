@@ -14,6 +14,7 @@ import {
   Package,
   PackagePlus,
   MapPin,
+  Tags,
   Users as UsersIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/production", label: "Produksi", icon: PackagePlus },
   { href: "/inventory", label: "Inventory", icon: PackageSearch },
   { href: "/master/products", label: "Produk", icon: Package },
+  { href: "/master/categories", label: "Kategori", icon: Tags },
   { href: "/master/locations", label: "Lokasi", icon: MapPin },
   { href: "/master/users", label: "Pengguna", icon: UsersIcon },
   { href: "/master", label: "Master Data", icon: Database },

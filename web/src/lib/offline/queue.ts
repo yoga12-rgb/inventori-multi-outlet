@@ -5,7 +5,6 @@
 // Saat online, hooks/useOfflineQueue akan mem-flush satu per satu.
 
 import { openDB, type IDBPDatabase } from "idb";
-import type { TransactionType } from "@/lib/supabase/types";
 
 const DB_NAME = "inventori-pwa";
 const DB_VERSION = 1;
@@ -22,7 +21,8 @@ export interface QueuedTransaction {
   enqueued_at: number;
   payload: {
     p_location_id: string;
-    p_type: TransactionType;
+    /** ID kategori dari tabel transaction_categories. */
+    p_category_id: string;
     p_items: QueuedTransactionItem[];
     p_notes?: string | null;
   };

@@ -6,12 +6,22 @@ export type LocationType = "gudang_produksi" | "outlet";
 
 export type TransferStatus = "in_transit" | "completed" | "cancelled";
 
-export type TransactionType =
-  | "penjualan"
-  | "complaiment"
-  | "retur"
-  | "rusak"
-  | "lainnya";
+/**
+ * Kode kategori transaksi. Sebelumnya enum DB; sekarang teks bebas mengikuti
+ * tabel `transaction_categories`. Lima kode default tetap di-seed (penjualan/
+ * complaiment/retur/rusak/lainnya), tapi bisa ditambah lewat halaman master.
+ */
+export type TransactionType = string;
+
+export interface TransactionCategory {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
 
 export interface AppLocation {
   id: string;
@@ -111,12 +121,14 @@ export interface TransactionRecord {
   id: string;
   transaction_number: string;
   location_id: string;
-  type: TransactionType;
+  /** ID kategori dinamis (FK ke transaction_categories). */
+  category_id: string;
   notes: string | null;
   client_uuid: string | null;
   created_by: string;
   created_at: string;
   location?: AppLocation | null;
+  category?: TransactionCategory | null;
 }
 
 export interface TransactionItemRecord {

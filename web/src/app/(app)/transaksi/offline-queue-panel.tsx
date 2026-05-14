@@ -12,7 +12,7 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { humanizeSupabaseError } from "@/lib/errors";
-import { formatDateTime, formatNumber, transactionTypeLabel } from "@/lib/format";
+import { formatDateTime, formatNumber } from "@/lib/format";
 
 export function OfflineQueuePanel() {
   const [items, setItems] = useState<QueuedTransaction[]>([]);
@@ -39,7 +39,7 @@ export function OfflineQueuePanel() {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase.rpc("transaction_create", {
       p_location_id: item.payload.p_location_id,
-      p_type: item.payload.p_type,
+      p_category_id: item.payload.p_category_id,
       p_items: item.payload.p_items,
       p_notes: item.payload.p_notes ?? null,
       p_client_uuid: item.client_uuid,
@@ -91,8 +91,7 @@ export function OfflineQueuePanel() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">
-                      {transactionTypeLabel[q.payload.p_type]} ·{" "}
-                      {formatNumber(totalQty)} unit
+                      Pengeluaran · {formatNumber(totalQty)} unit
                     </p>
                     <p className="text-xs text-slate-500">
                       Dibuat {formatDateTime(new Date(q.enqueued_at).toISOString())}

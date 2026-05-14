@@ -13,7 +13,11 @@ import type {
   AppProduct,
   InventoryBatch,
 } from "@/lib/supabase/types";
-import { InventoryPivotTable, type PivotRow } from "./pivot-table";
+import {
+  InventoryPivotTable,
+  type PivotLongRow,
+} from "./pivot-table";
+import type { TransactionCategory } from "@/lib/supabase/types";
 
 export const metadata = { title: "Inventory · Detail Batch" };
 
@@ -58,22 +62,26 @@ export default async function InventoryPage({
 
   // Mode "all" + view "pivot": panggil RPC inventory_pivot.
   if (isAllMode && view === "pivot") {
-    const { data, error } = await supabase.rpc("inventory_pivot", {
-      p_from: `${from}T00:00:00`,
-      p_to: `${to}T23:59:59.999`,
-    });
+    const [pivotRes, catRes] = await Promise.all([
+      supabase.rpc("inventory_pivot", {
+        p_from: `${from}T00:00:00`,
+        p_to: `${to}T23:59:59.999`,
+      }),
+      supabase
+        .from("transaction_categories")
+        .select(
+          "id, code, name, description, is_system, is_active, sort_order",
+        )
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+    ]);
 
-    let pivot = ((data ?? []) as unknown as PivotRow[]).map((r) => ({
-      ...r,
-      qty_akhir: Number(r.qty_akhir ?? 0),
-      qty_oper_in: Number(r.qty_oper_in ?? 0),
-      qty_oper_out: Number(r.qty_oper_out ?? 0),
-      qty_terjual: Number(r.qty_terjual ?? 0),
-      qty_retur: Number(r.qty_retur ?? 0),
-      qty_comp: Number(r.qty_comp ?? 0),
-      qty_rusak: Number(r.qty_rusak ?? 0),
-      qty_lainnya: Number(r.qty_lainnya ?? 0),
-    }));
+    let pivot = ((pivotRes.data ?? []) as unknown as PivotLongRow[]).map(
+      (r) => ({
+        ...r,
+        qty: Number(r.qty ?? 0),
+      }),
+    );
 
     if (search) {
       pivot = pivot.filter(
@@ -83,11 +91,13 @@ export default async function InventoryPage({
       );
     }
 
+    const categories = (catRes.data ?? []) as TransactionCategory[];
+
     return (
       <div>
         <PageHeader
           title="Inventory · Pivot Lintas Lokasi"
-          description="Stok akhir + aktivitas (oper in/out, terjual, retur, dst.) per lokasi × produk dalam rentang tanggal terpilih. Pilih satu lokasi untuk melihat detail batch + FIFO."
+          description="Stok akhir + aktivitas (oper in/out + tiap kategori pengeluaran) per lokasi × produk dalam rentang tanggal terpilih. Pilih satu lokasi untuk melihat detail batch + FIFO."
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <LocationPicker
@@ -108,10 +118,10 @@ export default async function InventoryPage({
           view={view}
         />
 
-        {error ? (
+        {pivotRes.error ? (
           <EmptyState
             title="Gagal memuat data"
-            description={error.message}
+            description={pivotRes.error.message}
           />
         ) : pivot.length === 0 ? (
           <EmptyState
@@ -119,7 +129,7 @@ export default async function InventoryPage({
             description="Belum ada produk aktif atau lokasi yang dapat ditampilkan."
           />
         ) : (
-          <InventoryPivotTable rows={pivot} />
+          <InventoryPivotTable rows={pivot} categories={categories} />
         )}
       </div>
     );

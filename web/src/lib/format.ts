@@ -37,6 +37,20 @@ export const transactionTypeLabel: Record<string, string> = {
   lainnya: "Lainnya",
 };
 
+/**
+ * Label fallback untuk kode kategori dinamis. Pakai `transactionTypeLabel`
+ * saat memungkinkan; kalau code tidak terdaftar di sana, lakukan
+ * Title-Case sederhana (mis. `bonus_karyawan` → `Bonus Karyawan`).
+ */
+export function categoryCodeLabel(code: string): string {
+  if (transactionTypeLabel[code]) return transactionTypeLabel[code];
+  return code
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/(^|\s)\w/g, (m) => m.toUpperCase());
+}
+
 export const transferStatusLabel: Record<string, string> = {
   in_transit: "Dalam Perjalanan",
   completed: "Selesai",

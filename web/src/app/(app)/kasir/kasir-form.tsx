@@ -13,13 +13,14 @@ import type {
   AppProduct,
   FifoPreviewRow,
   InventoryBatch,
-  TransactionType,
+  TransactionCategory,
 } from "@/lib/supabase/types";
 import { formatDate, formatNumber, locationTypeLabel } from "@/lib/format";
 
 type Props = {
   locations: AppLocation[];
   products: AppProduct[];
+  categories: TransactionCategory[];
   defaultLocationId: string | null;
 };
 
@@ -42,14 +43,6 @@ type LineItem = {
   error: string | null;
 };
 
-const TX_TYPES: { value: TransactionType; label: string }[] = [
-  { value: "penjualan", label: "Penjualan" },
-  { value: "complaiment", label: "Complaiment" },
-  { value: "retur", label: "Retur" },
-  { value: "rusak", label: "Rusak" },
-  { value: "lainnya", label: "Lainnya" },
-];
-
 function newRow(): LineItem {
   return {
     rowId: crypto.randomUUID(),
@@ -62,7 +55,7 @@ function newRow(): LineItem {
   };
 }
 
-export function KasirForm({ locations, products, defaultLocationId }: Props) {
+export function KasirForm({ locations, products, categories, defaultLocationId }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = getSupabaseBrowserClient();
@@ -70,7 +63,9 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
   const [locationId, setLocationId] = useState<string | "">(
     defaultLocationId ?? locations[0]?.id ?? ""
   );
-  const [type, setType] = useState<TransactionType>("penjualan");
+  const [categoryId, setCategoryId] = useState<string>(
+    categories.find((c) => c.code === "penjualan")?.id ?? categories[0]?.id ?? "",
+  );
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([newRow()]);
   const [submitting, setSubmitting] = useState(false);
@@ -330,7 +325,7 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
 
     const payload = {
       p_location_id: locationId,
-      p_type: type,
+      p_category_id: categoryId,
       p_notes: notes || null,
       p_items: items.map((it) => {
         const base = { product_id: it.product_id, qty: it.qty };
@@ -352,7 +347,7 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
     // Offline-first: kalau navigator offline, langsung enqueue.
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       try {
-        await enqueueTransaction({ ...payload, p_type: type });
+        await enqueueTransaction(payload);
         toast(
           "Anda offline. Transaksi disimpan ke antrean dan akan dikirim saat online.",
           "info"
@@ -369,7 +364,7 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
     const client_uuid = crypto.randomUUID();
     const { data, error } = await supabase.rpc("transaction_create", {
       p_location_id: payload.p_location_id,
-      p_type: payload.p_type,
+      p_category_id: payload.p_category_id,
       p_items: payload.p_items,
       p_notes: payload.p_notes,
       p_client_uuid: client_uuid,
@@ -381,7 +376,7 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
       const code = (error as { code?: string }).code;
       // Untuk error transient/konflik, simpan ke antrean supaya tidak hilang.
       if (code && !["22023", "P0001", "P0002"].includes(code)) {
-        await enqueueTransaction({ ...payload, p_type: type });
+        await enqueueTransaction(payload);
         toast(
           `Gagal mengirim ke server (${code}). Disimpan di antrean offline.`,
           "info"
@@ -443,15 +438,19 @@ export function KasirForm({ locations, products, defaultLocationId }: Props) {
             </select>
           </div>
           <div>
-            <label className="label">Tipe Pengeluaran</label>
+            <label className="label">Kategori Pengeluaran</label>
             <select
               className="input"
-              value={type}
-              onChange={(e) => setType(e.target.value as TransactionType)}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
             >
-              {TX_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              {categories.length === 0 && (
+                <option value="">Tidak ada kategori aktif</option>
+              )}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>

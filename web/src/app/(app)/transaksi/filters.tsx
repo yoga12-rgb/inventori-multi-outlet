@@ -3,28 +3,25 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, X } from "lucide-react";
-import { transactionTypeLabel } from "@/lib/format";
-import type { TransactionType } from "@/lib/supabase/types";
+import type { TransactionCategory } from "@/lib/supabase/types";
 
-const TYPE_OPTIONS: TransactionType[] = [
-  "penjualan",
-  "complaiment",
-  "retur",
-  "rusak",
-  "lainnya",
-];
+type Props = {
+  categories: TransactionCategory[];
+};
 
-export function TransaksiFilters() {
+export function TransaksiFilters({ categories }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const [type, setType] = useState(params.get("type") ?? "");
+  // Backward-compat: dulu memakai param `type` (enum code). Sekarang `category`
+  // (UUID). Kalau URL lama masih membawa `type`, biarkan kosong (form tidak
+  // mengisi otomatis ke UUID — user perlu memilih ulang).
+  const [category, setCategory] = useState(params.get("category") ?? "");
   const [from, setFrom] = useState(params.get("from") ?? "");
   const [to, setTo] = useState(params.get("to") ?? "");
   const [q, setQ] = useState(params.get("q") ?? "");
 
-  // Sinkronkan ke URL (debounced).
   useEffect(() => {
     const id = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
@@ -32,41 +29,42 @@ export function TransaksiFilters() {
         if (v) next.set(k, v);
         else next.delete(k);
       };
-      setOrDel("type", type);
+      setOrDel("category", category);
       setOrDel("from", from);
       setOrDel("to", to);
       setOrDel("q", q);
+      next.delete("type"); // bersihkan param lama
       startTransition(() => {
         router.replace(`/transaksi?${next.toString()}`);
       });
     }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, from, to, q]);
+  }, [category, from, to, q]);
 
   function clearAll() {
-    setType("");
+    setCategory("");
     setFrom("");
     setTo("");
     setQ("");
   }
 
-  const hasFilter = !!(type || from || to || q);
+  const hasFilter = !!(category || from || to || q);
 
   return (
     <div className="card mb-4">
       <div className="card-body grid grid-cols-1 gap-3 md:grid-cols-5">
         <div>
-          <label className="label">Tipe</label>
+          <label className="label">Kategori</label>
           <select
             className="input"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">Semua</option>
-            {TYPE_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {transactionTypeLabel[t]}
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
