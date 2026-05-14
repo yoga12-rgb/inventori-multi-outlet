@@ -246,6 +246,16 @@ as $$
   select coalesce(public.current_user_role() in ('Super Admin', 'Kepala Gudang'), false);
 $$;
 
+-- Grant tabel ke role 'authenticated' & 'service_role' (idempotent;
+-- biasanya sudah default di Supabase).
+grant usage on schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on
+  public.roles, public.permissions, public.role_permissions,
+  public.locations, public.products, public.users,
+  public.inventory_batches, public.transfers, public.transfer_items,
+  public.transactions, public.transaction_items
+to anon, authenticated, service_role;
+
 alter table public.roles              enable row level security;
 alter table public.permissions        enable row level security;
 alter table public.role_permissions   enable row level security;
@@ -843,6 +853,8 @@ group by ib.location_id, l.name, l.type, ib.product_id, p.sku, p.name, p.unit;
 
 comment on view public.v_stock_by_location is
   'Ringkasan stok per lokasi & produk untuk dashboard. Tunduk RLS inventory_batches.';
+
+grant select on public.v_stock_by_location to anon, authenticated, service_role;
 
 create or replace function public.dashboard_stock(
   p_location_id uuid default null

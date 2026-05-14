@@ -61,6 +61,21 @@ Invoke-Sql (Join-Path $mig "07_auth_user_provisioning.sql")
 Invoke-Sql (Join-Path $tst "99_seed_test_user.sql")
 Invoke-Sql (Join-Path $tst "test_fifo.sql")
 Invoke-Sql (Join-Path $tst "test_manual_override.sql")
+Invoke-Sql (Join-Path $tst "test_dashboard_agg.sql")
+Invoke-Sql (Join-Path $tst "test_rls_per_location.sql")
+
+# Concurrency test berjalan via Node (butuh dua koneksi paralel),
+# bukan psql. Skip kalau Node atau modul pg tidak tersedia.
+$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+$concurrencyScript = Join-Path $root "web\scripts\test-concurrency.mjs"
+if ($nodeCmd -and (Test-Path $concurrencyScript)) {
+  Write-Host "==> Running test-concurrency.mjs (Node)"
+  $env:TEST_DATABASE_URL = "postgresql://${DbUser}:${DbPass}@127.0.0.1:${HostPort}/${DbName}"
+  & node $concurrencyScript
+  if ($LASTEXITCODE -ne 0) { throw "concurrency test failed" }
+} else {
+  Write-Host "==> SKIP concurrency test (node/script tidak tersedia)"
+}
 Invoke-Sql (Join-Path $tst "test_provisioning.sql")
 
 Write-Host "==> All scripts executed"

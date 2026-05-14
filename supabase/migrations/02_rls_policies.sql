@@ -43,6 +43,20 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- Grant tabel ke role 'authenticated' & 'service_role'.
+-- Di Supabase ini biasanya sudah default; idempotent kalau di-run ulang.
+-- Penting di lingkungan test lokal supaya RLS bekerja (tanpa grant,
+-- 'authenticated' kena permission denied bahkan sebelum RLS dievaluasi).
+-- ---------------------------------------------------------------------
+grant usage on schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on
+  public.roles, public.permissions, public.role_permissions,
+  public.locations, public.products, public.users,
+  public.inventory_batches, public.transfers, public.transfer_items,
+  public.transactions, public.transaction_items
+to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------
 -- Aktifkan RLS
 -- ---------------------------------------------------------------------
 alter table public.roles              enable row level security;

@@ -6,9 +6,7 @@
 -- Di Supabase asli, jangan jalankan file ini.
 -- =====================================================================
 
-create schema if not exists auth;
-
--- Roles yang biasanya disediakan Supabase
+-- Roles yang biasanya disediakan Supabase. Buat dulu sebelum grant.
 do $$
 begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then
@@ -22,6 +20,9 @@ begin
   end if;
 end$$;
 
+create schema if not exists auth;
+grant usage on schema auth to anon, authenticated, service_role;
+
 create table if not exists auth.users (
   id    uuid primary key default gen_random_uuid(),
   email text,
@@ -34,10 +35,14 @@ alter table auth.users
   add column if not exists raw_user_meta_data jsonb default '{}'::jsonb;
 
 -- auth.uid() default null → memaksa kita pakai p_created_by saat memanggil RPC.
+-- security definer + grant execute supaya bisa dipanggil saat role authenticated.
 create or replace function auth.uid()
 returns uuid
 language sql
 stable
+security definer
 as $$
   select null::uuid;
 $$;
+
+grant execute on function auth.uid() to anon, authenticated, service_role;

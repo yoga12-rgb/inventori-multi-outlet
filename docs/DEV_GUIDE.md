@@ -79,11 +79,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\supabase\tests\run_tests.p
 
 Yang dijalankan harness:
 1. Spin up Postgres 16 di Docker (container `kiro-pg-test`, port host 55432).
-2. Apply migrasi 01–06 + bootstrap auth stub.
+2. Apply migrasi 01–07 + bootstrap auth stub.
 3. Apply seed user untuk testing.
-4. Jalankan: `test_fifo.sql`, `test_manual_override.sql`, dan test lainnya.
+4. Jalankan SQL test berurutan:
+   - `test_fifo.sql` — FIFO + idempotent.
+   - `test_manual_override.sql` — 7 skenario manual override.
+   - `test_dashboard_agg.sql` — agregasi `dashboard_stock` & `dashboard_incoming_transfers` lintas FIFO + transfer.
+   - `test_rls_per_location.sql` — RLS membatasi data per lokasi user, Super Admin lintas.
+   - `test_provisioning.sql` — trigger auto-create profil saat signup.
+5. Jalankan **`test-concurrency.mjs`** (Node) — dua transaksi qty=8 paralel atas batch qty=10. Invariant: 1 sukses + 1 `P0001`, qty akhir ≥ 0.
 
-Output yang diharapkan: exit code 0 + semua skenario `OK ...` di RAISE NOTICE.
+Output yang diharapkan: exit code 0 + semua skenario `OK ...` di RAISE NOTICE, dan baris `==> All scripts executed`.
+
+> Jika Node tidak terinstall, harness skip concurrency test (tidak gagal).
 
 ## Test Frontend
 

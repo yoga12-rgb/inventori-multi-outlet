@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:apply": "node scripts/apply-sql.mjs"
+    "db:apply": "node scripts/apply-sql.mjs",
+    "test:concurrency": "node scripts/test-concurrency.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

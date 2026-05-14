@@ -29,6 +29,8 @@ group by ib.location_id, l.name, l.type, ib.product_id, p.sku, p.name, p.unit;
 comment on view public.v_stock_by_location is
   'Ringkasan stok per lokasi & produk untuk dashboard. Tunduk RLS inventory_batches.';
 
+grant select on public.v_stock_by_location to anon, authenticated, service_role;
+
 -- ---------------------------------------------------------------------
 -- RPC: ringkasan dashboard satu lokasi (default = lokasi user).
 -- ---------------------------------------------------------------------
