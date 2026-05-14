@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { humanizeSupabaseError } from "@/lib/errors";
 import type { AppLocation, AppRole, AppUserProfile } from "@/lib/supabase/types";
 import { UserDialog, type UserDraft } from "./user-dialog";
+import { NewUserDialog } from "./new-user-dialog";
 
 type AuthUserRow = {
   id: string;
@@ -43,6 +44,7 @@ export function UsersManager({
   const supabase = getSupabaseBrowserClient();
 
   const [editing, setEditing] = useState<UserDraft | null>(null);
+  const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   function startEdit(p: AppUserProfile) {
@@ -152,7 +154,17 @@ export function UsersManager({
               Daftar Pengguna
             </h2>
           </div>
-          <span className="badge-slate">{profiles.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="badge-slate">{profiles.length}</span>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setCreating(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              Buat Pengguna Baru
+            </button>
+          </div>
         </div>
         <div className="card-body overflow-x-auto">
           <table className="table">
@@ -255,6 +267,18 @@ export function UsersManager({
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {creating && (
+        <NewUserDialog
+          roles={roles}
+          locations={locations}
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
             router.refresh();
           }}
         />
