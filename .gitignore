@@ -1,0 +1,79 @@
+# =====================================================================
+# Node / Next.js
+# =====================================================================
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+dist/
+build/
+
+# Build artefak
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================================================================
+# Environment & secrets
+# =====================================================================
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Jangan ignore .env.local.example (template untuk kontributor)
+!**/.env.local.example
+!**/.env.example
+
+# Kredensial / kunci
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# =====================================================================
+# Supabase CLI artefak lokal
+# =====================================================================
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/.env.local
+
+# Smoke test / debug helper sementara (tidak perlu masuk repo)
+supabase/tests/_smoke_*.sql
+supabase/tests/_seed_*.sql
+
+# =====================================================================
+# IDE / OS
+# =====================================================================
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =====================================================================
+# Log & cache
+# =====================================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm/
+.eslintcache
+.cache/
+
+# =====================================================================
+# Test artefak lokal (Docker container untuk smoke test)
+# Tidak ada file persisten yang ditulis ke repo, tapi jaga-jaga.
+# =====================================================================
+**/coverage/
+**/.nyc_output/
