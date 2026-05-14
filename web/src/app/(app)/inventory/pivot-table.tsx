@@ -109,8 +109,8 @@ export function InventoryPivotTable({ rows }: { rows: PivotRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full border-collapse text-xs">
+    <div className="w-full max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table className="w-max border-collapse text-xs">
         <thead>
           {/* Baris 1: nama lokasi + total terjual */}
           <tr>

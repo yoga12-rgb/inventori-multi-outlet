@@ -13,6 +13,10 @@ body {
 
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  /* Cegah seluruh halaman ikut scroll horizontal kalau ada child yang lebar
+     (mis. tabel pivot di /inventory). Container yang ingin scroll horizontal
+     harus memakai class 'overflow-x-auto' sendiri. */
+  overflow-x: clip;
 }
 
 @layer components {
