@@ -1,5 +1,7 @@
 import { differenceInDays, parseISO } from "date-fns";
 import { Boxes } from "lucide-react";
+import Link from "next/link";
+import clsx from "clsx";
 import { PageHeader } from "@/components/ui/page-header";
 import { LocationPicker } from "@/components/shell/location-picker";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,10 +13,22 @@ import type {
   AppProduct,
   InventoryBatch,
 } from "@/lib/supabase/types";
+import { InventoryPivotTable, type PivotRow } from "./pivot-table";
 
 export const metadata = { title: "Inventory · Detail Batch" };
 
-type SearchParams = { loc?: string; q?: string };
+type SearchParams = {
+  loc?: string;
+  q?: string;
+  view?: "pivot" | "detail";
+  from?: string;
+  to?: string;
+};
+
+function todayLocalISO() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function InventoryPage({
   searchParams,
@@ -27,9 +41,6 @@ export default async function InventoryPage({
   const role = session.profile?.role?.name;
   const canSeeAll = role === "Super Admin" || role === "Kepala Gudang";
 
-  // Resolve mode lokasi.
-  // - "all": tampilkan stok semua lokasi (hanya untuk Super Admin / Kepala Gudang).
-  // - <uuid>: tampilkan satu lokasi.
   const rawLoc = searchParams.loc;
   const isAllMode = canSeeAll && rawLoc === "all";
   const selectedLocation = isAllMode
@@ -40,8 +51,81 @@ export default async function InventoryPage({
       null;
 
   const search = (searchParams.q ?? "").trim().toLowerCase();
+  const view = searchParams.view === "detail" ? "detail" : "pivot"; // default pivot
+  const today = todayLocalISO();
+  const from = searchParams.from?.trim() || today;
+  const to = searchParams.to?.trim() || today;
 
-  // Query batch sesuai mode.
+  // Mode "all" + view "pivot": panggil RPC inventory_pivot.
+  if (isAllMode && view === "pivot") {
+    const { data, error } = await supabase.rpc("inventory_pivot", {
+      p_from: `${from}T00:00:00`,
+      p_to: `${to}T23:59:59.999`,
+    });
+
+    let pivot = ((data ?? []) as unknown as PivotRow[]).map((r) => ({
+      ...r,
+      qty_akhir: Number(r.qty_akhir ?? 0),
+      qty_oper_in: Number(r.qty_oper_in ?? 0),
+      qty_oper_out: Number(r.qty_oper_out ?? 0),
+      qty_terjual: Number(r.qty_terjual ?? 0),
+      qty_retur: Number(r.qty_retur ?? 0),
+      qty_comp: Number(r.qty_comp ?? 0),
+      qty_rusak: Number(r.qty_rusak ?? 0),
+      qty_lainnya: Number(r.qty_lainnya ?? 0),
+    }));
+
+    if (search) {
+      pivot = pivot.filter(
+        (r) =>
+          r.product_name.toLowerCase().includes(search) ||
+          r.product_sku.toLowerCase().includes(search),
+      );
+    }
+
+    return (
+      <div>
+        <PageHeader
+          title="Inventory · Pivot Lintas Lokasi"
+          description="Stok akhir + aktivitas (oper in/out, terjual, retur, dst.) per lokasi × produk dalam rentang tanggal terpilih. Pilih satu lokasi untuk melihat detail batch + FIFO."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <LocationPicker
+                locations={session.locations}
+                selected={selectedLocation}
+                includeAll={canSeeAll}
+              />
+              <ViewToggle view={view} loc="all" from={from} to={to} q={searchParams.q} />
+            </div>
+          }
+        />
+
+        <FiltersBar
+          loc="all"
+          from={from}
+          to={to}
+          q={searchParams.q ?? ""}
+          view={view}
+        />
+
+        {error ? (
+          <EmptyState
+            title="Gagal memuat data"
+            description={error.message}
+          />
+        ) : pivot.length === 0 ? (
+          <EmptyState
+            title="Tidak ada data"
+            description="Belum ada produk aktif atau lokasi yang dapat ditampilkan."
+          />
+        ) : (
+          <InventoryPivotTable rows={pivot} />
+        )}
+      </div>
+    );
+  }
+
+  // Mode "detail" (single lokasi atau all-detail).
   let batchQuery = supabase
     .from("inventory_batches")
     .select(
@@ -54,7 +138,6 @@ export default async function InventoryPage({
   if (!isAllMode && selectedLocation) {
     batchQuery = batchQuery.eq("location_id", selectedLocation);
   }
-  // Untuk mode "all", tidak ada filter; RLS akan tetap memfilter sesuai role.
 
   const [batchesRes, productsRes] = await Promise.all([
     selectedLocation
@@ -79,9 +162,6 @@ export default async function InventoryPage({
     );
   });
 
-  // Group berbeda tergantung mode.
-  // - all: location_id → product_id → batches
-  // - single: product_id → batches
   const groupedByLocation = isAllMode
     ? batches.reduce<Record<string, Record<string, InventoryBatch[]>>>(
         (acc, b) => {
@@ -110,25 +190,28 @@ export default async function InventoryPage({
             : "Daftar batch per produk di lokasi terpilih. Batch tertua diutamakan oleh logika FIFO. Indikator kedaluwarsa membantu mengidentifikasi stok rawan."
         }
         actions={
-          <LocationPicker
-            locations={session.locations}
-            selected={selectedLocation}
-            includeAll={canSeeAll}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <LocationPicker
+              locations={session.locations}
+              selected={selectedLocation}
+              includeAll={canSeeAll}
+            />
+            {isAllMode && (
+              <ViewToggle view={view} loc="all" from={from} to={to} q={searchParams.q} />
+            )}
+          </div>
         }
       />
 
-      <form className="mb-4">
-        <input type="hidden" name="loc" value={selectedLocation ?? ""} />
-        <input
-          name="q"
-          defaultValue={searchParams.q ?? ""}
-          placeholder="Cari produk berdasarkan nama atau SKU..."
-          className="input max-w-md"
-        />
-      </form>
+      <FiltersBar
+        loc={selectedLocation ?? ""}
+        from={from}
+        to={to}
+        q={searchParams.q ?? ""}
+        view={view}
+      />
 
-      {/* === MODE: SEMUA LOKASI === */}
+      {/* === MODE: SEMUA LOKASI - DETAIL BATCH === */}
       {isAllMode &&
         groupedByLocation &&
         (Object.keys(groupedByLocation).length === 0 ? (
@@ -175,6 +258,116 @@ export default async function InventoryPage({
           </div>
         ))}
     </div>
+  );
+}
+
+function ViewToggle({
+  view,
+  loc,
+  from,
+  to,
+  q,
+}: {
+  view: "pivot" | "detail";
+  loc: string;
+  from: string;
+  to: string;
+  q?: string;
+}) {
+  const params = new URLSearchParams();
+  if (loc) params.set("loc", loc);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (q) params.set("q", q);
+
+  const pivotHref = (() => {
+    const sp = new URLSearchParams(params);
+    sp.set("view", "pivot");
+    return `/inventory?${sp.toString()}`;
+  })();
+  const detailHref = (() => {
+    const sp = new URLSearchParams(params);
+    sp.set("view", "detail");
+    return `/inventory?${sp.toString()}`;
+  })();
+
+  return (
+    <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+      <Link
+        href={pivotHref}
+        className={clsx(
+          "px-3 py-1.5",
+          view === "pivot"
+            ? "bg-brand-600 text-white"
+            : "text-slate-600 hover:bg-slate-50",
+        )}
+      >
+        Pivot
+      </Link>
+      <Link
+        href={detailHref}
+        className={clsx(
+          "border-l border-slate-200 px-3 py-1.5",
+          view === "detail"
+            ? "bg-brand-600 text-white"
+            : "text-slate-600 hover:bg-slate-50",
+        )}
+      >
+        Detail Batch
+      </Link>
+    </div>
+  );
+}
+
+function FiltersBar({
+  loc,
+  from,
+  to,
+  q,
+  view,
+}: {
+  loc: string;
+  from: string;
+  to: string;
+  q: string;
+  view: "pivot" | "detail";
+}) {
+  const isAll = loc === "all";
+  return (
+    <form className="mb-4 flex flex-wrap items-end gap-3" method="GET">
+      <input type="hidden" name="loc" value={loc} />
+      <input type="hidden" name="view" value={view} />
+      {isAll && (
+        <>
+          <div>
+            <label className="label">Dari Tanggal</label>
+            <input type="date" name="from" defaultValue={from} className="input" />
+          </div>
+          <div>
+            <label className="label">Sampai Tanggal</label>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to}
+              min={from}
+              className="input"
+            />
+          </div>
+        </>
+      )}
+      <div className="flex-1 min-w-[12rem]">
+        <label className="label">Cari produk</label>
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Nama atau SKU..."
+          className="input"
+        />
+      </div>
+      <button type="submit" className="btn-secondary">
+        Terapkan
+      </button>
+    </form>
   );
 }
 

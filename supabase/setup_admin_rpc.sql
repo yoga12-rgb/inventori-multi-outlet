@@ -201,3 +201,112 @@ begin
     'notes', p_notes
   );
 end$$;
+
+
+
+-- =====================================================================
+-- inventory_pivot
+-- Cross-tab stok per (lokasi × produk) dengan agregat aktivitas dalam
+-- range waktu. Dipakai halaman /inventory mode "Semua Lokasi" untuk
+-- menampilkan kontrol stok lintas-outlet dalam satu tabel.
+--
+-- Kolom yang dihasilkan per (lokasi, produk):
+--   - qty_akhir   : sum qty_available saat ini
+--   - qty_oper_in : sum transfer diterima (status=completed, received_at in range)
+--   - qty_oper_out: sum transfer dikirim (status<>cancelled, sent_at in range)
+--   - qty_terjual : sum transactions type='penjualan' dalam range
+--   - qty_retur   : sum transactions type='retur'
+--   - qty_comp    : sum transactions type='complaiment'
+--   - qty_rusak   : sum transactions type='rusak'
+--   - qty_lainnya : sum transactions type='lainnya'
+--
+-- RLS: RPC security definer, tetapi kami menerapkan filter per role
+-- (Super Admin/Kepala Gudang lihat semua, lainnya lihat lokasi sendiri)
+-- supaya konsisten dengan policy inventory_batches.
+-- =====================================================================
+create or replace function public.inventory_pivot(
+  p_from timestamptz default date_trunc('day', now()),
+  p_to   timestamptz default now()
+)
+returns table (
+  location_id    uuid,
+  location_name  text,
+  location_type  location_type,
+  product_id     uuid,
+  product_sku    text,
+  product_name   text,
+  product_unit   text,
+  qty_akhir      bigint,
+  qty_oper_in    bigint,
+  qty_oper_out   bigint,
+  qty_terjual    bigint,
+  qty_retur      bigint,
+  qty_comp       bigint,
+  qty_rusak      bigint,
+  qty_lainnya    bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with allowed as (
+    select l.id, l.name, l.type
+    from public.locations l
+    where l.is_active = true
+      and (
+        public.is_global_user()
+        or l.id = public.current_user_location()
+      )
+  ),
+  stock as (
+    select b.location_id, b.product_id, sum(b.qty_available)::bigint as qty
+    from public.inventory_batches b
+    group by b.location_id, b.product_id
+  ),
+  oper_in as (
+    select t.to_location_id as location_id, ti.product_id, sum(ti.qty)::bigint as qty
+    from public.transfer_items ti
+    join public.transfers t on t.id = ti.transfer_id
+    where t.status = 'completed'
+      and t.received_at >= p_from
+      and t.received_at <= p_to
+    group by t.to_location_id, ti.product_id
+  ),
+  oper_out as (
+    select t.from_location_id as location_id, ti.product_id, sum(ti.qty)::bigint as qty
+    from public.transfer_items ti
+    join public.transfers t on t.id = ti.transfer_id
+    where t.status <> 'cancelled'
+      and t.sent_at >= p_from
+      and t.sent_at <= p_to
+    group by t.from_location_id, ti.product_id
+  ),
+  tx as (
+    select t.location_id, ti.product_id, t.type::text as type,
+           sum(ti.qty)::bigint as qty
+    from public.transaction_items ti
+    join public.transactions t on t.id = ti.transaction_id
+    where t.created_at >= p_from
+      and t.created_at <= p_to
+    group by t.location_id, ti.product_id, t.type
+  )
+  select
+    l.id, l.name, l.type,
+    p.id, p.sku, p.name, p.unit,
+    coalesce(s.qty, 0),
+    coalesce(oi.qty, 0),
+    coalesce(oo.qty, 0),
+    coalesce((select qty from tx where tx.location_id = l.id and tx.product_id = p.id and tx.type = 'penjualan'),  0),
+    coalesce((select qty from tx where tx.location_id = l.id and tx.product_id = p.id and tx.type = 'retur'),      0),
+    coalesce((select qty from tx where tx.location_id = l.id and tx.product_id = p.id and tx.type = 'complaiment'),0),
+    coalesce((select qty from tx where tx.location_id = l.id and tx.product_id = p.id and tx.type = 'rusak'),      0),
+    coalesce((select qty from tx where tx.location_id = l.id and tx.product_id = p.id and tx.type = 'lainnya'),    0)
+  from allowed l
+  cross join public.products p
+  left join stock     s  on s.location_id  = l.id and s.product_id  = p.id
+  left join oper_in   oi on oi.location_id = l.id and oi.product_id = p.id
+  left join oper_out  oo on oo.location_id = l.id and oo.product_id = p.id
+  where p.is_active = true
+  order by l.name, p.name;
+$$;
