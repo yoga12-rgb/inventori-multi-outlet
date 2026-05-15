@@ -1,12 +1,17 @@
 // Service Worker untuk Sistem Inventori Multi-Outlet (PWA shell cache).
+//
 // Strategi:
-//   - Aset statis (Next /_next, ikon, manifest, font): cache-first.
+//   - Aset Next (/_next/*) DIBYPASS. File-nya sudah immutable hash dan
+//     ditangani oleh HTTP cache browser, sehingga meng-cache di SW tidak
+//     menambah nilai dan justru rawan menyajikan CSS/JS lama setelah deploy.
 //   - Halaman HTML (navigasi): network-first dengan fallback ke cache lalu /offline.
-//   - API Supabase (HTTP) dilewatkan ke jaringan, tidak di-cache (datanya volatile,
-//     dan offline-first kasir sudah ditangani via IndexedDB queue).
+//   - Aset statis non-Next (ikon, manifest, font): cache-first.
+//   - API Supabase (HTTP) dilewatkan ke jaringan, tidak di-cache (datanya volatile;
+//     offline-first kasir sudah ditangani via IndexedDB queue).
 //
 // Versi cache di-bump setiap kali isi SW berubah supaya client lama dibersihkan.
-const VERSION = "v2";
+
+const VERSION = "v3";
 const STATIC_CACHE = `inv-static-${VERSION}`;
 const PAGE_CACHE = `inv-pages-${VERSION}`;
 
@@ -41,8 +46,12 @@ self.addEventListener("activate", (event) => {
 });
 
 function shouldBypass(url) {
-  // Lewatkan request ke Supabase / API lain.
+  // Cross-origin (Supabase, font CDN, dsb) tidak ditangani SW.
   if (url.origin !== self.location.origin) return true;
+  // Build artefak Next punya hash di filename + Cache-Control immutable.
+  // Biarkan HTTP cache browser yang menangani — caching ulang via SW
+  // pernah menyebabkan CSS lama dilayani setelah file di-rebuild.
+  if (url.pathname.startsWith("/_next/")) return true;
   if (url.pathname.startsWith("/api/")) return true;
   if (url.pathname.startsWith("/auth/")) return true;
   return false;
@@ -55,19 +64,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (shouldBypass(url)) return;
 
-  // Aset statis Next.
+  // Aset statis (ikon, manifest, font, svg) → cache-first.
   if (
-    url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
-    /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|css|js|map)$/i.test(
-      url.pathname,
-    )
+    /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot)$/i.test(url.pathname)
   ) {
     event.respondWith(cacheFirst(req, STATIC_CACHE));
     return;
   }
 
-  // Manifest.
   if (url.pathname === "/manifest.webmanifest") {
     event.respondWith(cacheFirst(req, STATIC_CACHE));
     return;
@@ -77,6 +82,12 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate" || req.headers.get("accept")?.includes("text/html")) {
     event.respondWith(networkFirstPage(req));
     return;
+  }
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "skip-waiting") {
+    self.skipWaiting();
   }
 });
 

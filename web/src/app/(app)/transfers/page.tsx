@@ -2,12 +2,11 @@ import Link from "next/link";
 import { ArrowDownToLine, ArrowUpFromLine, Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { LocationPicker } from "@/components/shell/location-picker";
-import { TransferStatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireSession } from "@/lib/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { formatDateTime } from "@/lib/format";
 import type { TransferRecord } from "@/lib/supabase/types";
+import { TransferRow } from "./transfer-row";
 
 export const metadata = { title: "Transfer · Mutasi Antar Lokasi" };
 
@@ -111,38 +110,17 @@ function TransferList({
         </div>
         <span className="badge-slate">{rows.length}</span>
       </div>
-      <div className="card-body">
+      <div className="card-body overflow-visible">
         {rows.length === 0 ? (
           <EmptyState
             title="Tidak ada transfer"
             description="Transfer akan muncul di sini setelah dibuat."
           />
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {rows.map((t) => {
-              const partner =
-                direction === "in" ? t.from_location?.name : t.to_location?.name;
-              return (
-                <li key={t.id}>
-                  <Link
-                    href={`/transfers/${t.id}`}
-                    className="flex items-start justify-between gap-3 py-3 hover:bg-slate-50"
-                  >
-                    <div>
-                      <p className="font-mono text-sm">{t.transfer_number}</p>
-                      <p className="text-xs text-slate-500">
-                        {direction === "in" ? "Dari" : "Ke"} {partner ?? "-"} ·{" "}
-                        {formatDateTime(t.sent_at)}
-                      </p>
-                      {t.notes && (
-                        <p className="mt-1 text-xs text-slate-500">{t.notes}</p>
-                      )}
-                    </div>
-                    <TransferStatusBadge status={t.status} />
-                  </Link>
-                </li>
-              );
-            })}
+          <ul className="divide-y divide-slate-100 overflow-visible">
+            {rows.map((t) => (
+              <TransferRow key={t.id} transfer={t} direction={direction} />
+            ))}
           </ul>
         )}
       </div>

@@ -1,0 +1,15 @@
+# File yang tidak perlu diunggah ke Vercel build container.
+# Next.js builder hanya butuh src + public + config.
+
+# Skrip operasional yang dijalankan di workstation, bukan di Vercel.
+scripts/
+
+# Migrasi & test SQL berada di luar `web/` (root supabase/) — tidak ikut.
+# Direktori ini hanya untuk safety jika ada symlink lokal.
+
+# IDE / cache
+.vscode/
+.idea/
+.next/
+node_modules/
+*.log

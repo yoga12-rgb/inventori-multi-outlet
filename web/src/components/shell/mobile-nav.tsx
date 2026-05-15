@@ -4,19 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import {
-  LayoutDashboard,
-  ShoppingCart,
   ArrowLeftRight,
+  BookOpen,
+  LayoutDashboard,
   PackageSearch,
-  Database,
+  ShoppingCart,
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Beranda", icon: LayoutDashboard },
+  { href: "/", label: "Beranda", icon: LayoutDashboard, exact: true },
   { href: "/kasir", label: "Kasir", icon: ShoppingCart },
   { href: "/transfers", label: "Transfer", icon: ArrowLeftRight },
   { href: "/inventory", label: "Stok", icon: PackageSearch },
-  { href: "/master", label: "Master", icon: Database },
+  { href: "/panduan", label: "Panduan", icon: BookOpen },
 ];
 
 export function MobileNav() {
@@ -24,8 +24,9 @@ export function MobileNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur lg:hidden">
       {NAV.map((item) => {
-        const active =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        const active = item.exact
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon;
         return (
           <Link
