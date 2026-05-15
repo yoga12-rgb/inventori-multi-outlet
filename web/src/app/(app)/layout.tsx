@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/shell/mobile-nav";
 import { ConnectionPill } from "@/components/shell/connection-pill";
 import { UserMenu } from "@/components/shell/user-menu";
 import { OfflineFlusher } from "@/components/shell/offline-flusher";
+import { RouteProgress } from "@/components/shell/route-progress";
 import { requireSession } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -11,6 +12,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      <RouteProgress />
       <Sidebar />
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur lg:px-8">
