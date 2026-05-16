@@ -1,4 +1,4 @@
--- =====================================================================
+﻿-- =====================================================================
 -- test_manual_override.sql
 -- Smoke test untuk cabang Manual Override pada RPC transaction_create.
 --
@@ -33,6 +33,7 @@ declare
   v_tx          jsonb;
   v_cid         uuid;
   v_count       integer;
+  v_cat         uuid;
 begin
   -- -------------------------------------------------------------------
   -- Lookup master data
@@ -47,6 +48,11 @@ begin
   if v_admin is null then
     raise notice 'Belum ada user di public.users. Lewati test_manual_override.';
     return;
+  end if;
+
+  select id into v_cat from public.transaction_categories where code = 'penjualan';
+  if v_cat is null then
+    raise exception 'Kategori penjualan tidak ditemukan; jalankan migrasi 08 dulu.';
   end if;
 
   -- -------------------------------------------------------------------
@@ -112,7 +118,7 @@ begin
 
     v_tx := public.transaction_create(
       p_location_id => v_outlet_dago,
-      p_type        => 'penjualan',
+      p_category_id => v_cat       ,
       p_items       => jsonb_build_array(
         jsonb_build_object(
           'product_id', v_pa,
@@ -169,7 +175,7 @@ begin
 
     v_tx := public.transaction_create(
       p_location_id => v_outlet_dago,
-      p_type        => 'penjualan',
+      p_category_id => v_cat       ,
       p_items       => jsonb_build_array(
         jsonb_build_object(
           'product_id', v_pa,
@@ -219,7 +225,7 @@ begin
     begin
       perform public.transaction_create(
         p_location_id => v_outlet_dago,
-        p_type        => 'penjualan',
+        p_category_id => v_cat       ,
         p_items       => jsonb_build_array(
           jsonb_build_object(
             'product_id', v_pa,
@@ -277,7 +283,7 @@ begin
       begin
         perform public.transaction_create(
           p_location_id => v_outlet_dago,
-          p_type        => 'penjualan',
+          p_category_id => v_cat       ,
           p_items       => jsonb_build_array(
             jsonb_build_object(
               'product_id', v_pa,
@@ -322,7 +328,7 @@ begin
     begin
       perform public.transaction_create(
         p_location_id => v_outlet_dago,
-        p_type        => 'penjualan',
+        p_category_id => v_cat       ,
         p_items       => jsonb_build_array(
           jsonb_build_object(
             'product_id', v_pa,
@@ -370,7 +376,7 @@ begin
       begin
         perform public.transaction_create(
           p_location_id => v_outlet_dago,
-          p_type        => 'penjualan',
+          p_category_id => v_cat       ,
           p_items       => jsonb_build_array(
             jsonb_build_object(
               'product_id', v_pa,
@@ -420,7 +426,7 @@ begin
 
     v_tx := public.transaction_create(
       p_location_id => v_outlet_dago,
-      p_type        => 'penjualan',
+      p_category_id => v_cat       ,
       p_items       => jsonb_build_array(
         jsonb_build_object(
           'product_id', v_pa,
@@ -444,7 +450,7 @@ begin
     -- Panggilan kedua: payload identik, p_client_uuid sama.
     v_tx2 := public.transaction_create(
       p_location_id => v_outlet_dago,
-      p_type        => 'penjualan',
+      p_category_id => v_cat       ,
       p_items       => jsonb_build_array(
         jsonb_build_object(
           'product_id', v_pa,

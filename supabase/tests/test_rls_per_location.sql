@@ -1,4 +1,4 @@
--- =====================================================================
+﻿-- =====================================================================
 -- test_rls_per_location.sql
 -- Verifikasi RLS membatasi data inventory & transactions per lokasi user,
 -- kecuali Super Admin / Kepala Gudang.
@@ -45,12 +45,18 @@ declare
 
   v_n_inv     integer;
   v_n_tx      integer;
+  v_cat       uuid;
 begin
   select id into v_role_sa from public.roles where name = 'Super Admin';
   select id into v_role_ko from public.roles where name = 'Kasir Outlet';
   select id into v_loc_pam from public.locations where name = 'Outlet Pamulang';
   select id into v_loc_saw from public.locations where name = 'Outlet Sawangan';
   select id into v_pa      from public.products  where sku = 'SKU-001';
+
+  select id into v_cat from public.transaction_categories where code = 'penjualan';
+  if v_cat is null then
+    raise exception 'Kategori penjualan tidak ditemukan; jalankan migrasi 08 dulu.';
+  end if;
 
   -- Auth user dummy.
   insert into auth.users(id, email) values
@@ -84,7 +90,7 @@ begin
   -- Buat 1 transaksi di Pamulang (oleh kasir Pamulang).
   perform public.transaction_create(
     p_location_id => v_loc_pam,
-    p_type        => 'penjualan',
+    p_category_id => v_cat,
     p_items       => jsonb_build_array(
       jsonb_build_object('product_id', v_pa, 'qty', 1)
     ),

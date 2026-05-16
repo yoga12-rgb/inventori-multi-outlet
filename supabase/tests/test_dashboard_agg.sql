@@ -1,4 +1,4 @@
--- =====================================================================
+﻿-- =====================================================================
 -- test_dashboard_agg.sql
 -- Verifikasi agregasi RPC dashboard_stock & dashboard_incoming_transfers
 -- setelah serangkaian transaksi & transfer.
@@ -33,6 +33,7 @@ declare
   v_incoming  bigint;
   v_total_qty bigint;
   v_tr        jsonb;
+  v_cat       uuid;
 begin
   -- Lookup master.
   select id into v_admin from public.users limit 1;
@@ -44,6 +45,11 @@ begin
   select id into v_pa      from public.products  where sku = 'SKU-001';
   select id into v_loc_saw from public.locations where name = 'Outlet Sawangan';
   select id into v_loc_pam from public.locations where name = 'Outlet Pamulang';
+
+  select id into v_cat from public.transaction_categories where code = 'penjualan';
+  if v_cat is null then
+    raise exception 'Kategori penjualan tidak ditemukan; jalankan migrasi 08 dulu.';
+  end if;
 
   -- -------------------------------------------------------------------
   -- Persiapan fixture.
@@ -91,7 +97,7 @@ begin
   raise notice '--- TRANSAKSI FIFO 15 ---';
   perform public.transaction_create(
     p_location_id => v_loc_saw,
-    p_type        => 'penjualan',
+    p_category_id => v_cat,
     p_items       => jsonb_build_array(
       jsonb_build_object('product_id', v_pa, 'qty', 15)
     ),

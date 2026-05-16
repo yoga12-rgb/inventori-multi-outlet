@@ -1,4 +1,4 @@
--- =====================================================================
+﻿-- =====================================================================
 -- test_fifo.sql
 -- Smoke test untuk RPC FIFO + transfer.
 -- Jalankan di SQL Editor setelah migrasi 01–06 terpasang.
@@ -11,6 +11,7 @@ declare
   v_outlet   uuid;
   v_product  uuid;
   v_admin    uuid;            -- bisa user dummy untuk testing
+  v_cat      uuid;            -- kategori 'penjualan' (post migrasi 08)
   v_total    integer;
   v_tx       jsonb;
   v_tr       jsonb;
@@ -27,6 +28,11 @@ begin
   if v_admin is null then
     raise notice 'Belum ada user di public.users. Lewati test yang butuh created_by.';
     return;
+  end if;
+
+  select id into v_cat from public.transaction_categories where code = 'penjualan';
+  if v_cat is null then
+    raise exception 'Kategori penjualan tidak ditemukan; pastikan migrasi 08 sudah dijalankan.';
   end if;
 
   -- Stok awal di Gudang
@@ -53,7 +59,7 @@ begin
   -- ==========================================================
   v_tx := public.transaction_create(
     p_location_id => v_gudang,
-    p_type        => 'penjualan',
+    p_category_id => v_cat,
     p_items       => jsonb_build_array(
       jsonb_build_object('product_id', v_product, 'qty', 45)
     ),
@@ -110,7 +116,7 @@ begin
   begin
     v_tx := public.transaction_create(
       p_location_id => v_outlet,
-      p_type        => 'penjualan',
+      p_category_id => v_cat,
       p_items       => jsonb_build_array(
         jsonb_build_object('product_id', v_product, 'qty', 5)
       ),
@@ -121,7 +127,7 @@ begin
 
     v_tx := public.transaction_create(
       p_location_id => v_outlet,
-      p_type        => 'penjualan',
+      p_category_id => v_cat,
       p_items       => jsonb_build_array(
         jsonb_build_object('product_id', v_product, 'qty', 5)
       ),

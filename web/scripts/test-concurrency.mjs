@@ -44,7 +44,7 @@ end$$;
 const SQL_CALL = `
 select public.transaction_create(
   p_location_id => (select id from public.locations where name = 'Outlet Pajajaran'),
-  p_type        => 'penjualan',
+  p_category_id => (select id from public.transaction_categories where code = 'penjualan'),
   p_items       => jsonb_build_array(
                      jsonb_build_object(
                        'product_id', (select id from public.products where sku = 'SKU-001'),
